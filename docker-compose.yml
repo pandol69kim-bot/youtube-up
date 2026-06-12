@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mp3playlist
+      POSTGRES_PASSWORD: mp3playlist
+      POSTGRES_DB: mp3playlist
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: sqlite:///./data/app.db
+      BACKEND_CORS_ORIGINS: http://127.0.0.1:3000,http://localhost:3000
+      YOUTUBE_UPLOAD_MODE: mock
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./renders:/app/renders
+      - ./thumbnails:/app/thumbnails
+
+  frontend:
+    build: ./frontend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
