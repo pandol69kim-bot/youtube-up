@@ -57,7 +57,7 @@ export const api = {
   updateTrack: (trackId: number, payload: Partial<Track>) =>
     request<Track>(`/tracks/${trackId}`, { method: "PUT", body: JSON.stringify(payload) }),
   latestVideo: (playlistId: number) =>
-    request<Video>(`/video/latest/${playlistId}`),
+    request<Video | null>(`/video/latest/${playlistId}`),
   coverUpload: (file: File) => {
     const form = new FormData();
     form.append("file", file);

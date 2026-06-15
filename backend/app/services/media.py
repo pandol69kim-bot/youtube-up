@@ -190,6 +190,22 @@ def render_playlist_video(
     return output_file, chapters_for_tracks(list(tracks))
 
 
+_KOREAN_FONT_CANDIDATES = [
+    "C:/Windows/Fonts/malgun.ttf",
+    "C:/Windows/Fonts/HANDotum.ttf",
+    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+]
+
+
+def _load_font(size: int):
+    for path in _KOREAN_FONT_CANDIDATES:
+        try:
+            return ImageFont.truetype(path, size=size)
+        except OSError:
+            continue
+    return ImageFont.load_default(size=size)
+
+
 def generate_thumbnail(video_id: int, title: str, style: str) -> Path:
     settings = get_settings()
     palettes = {
@@ -201,9 +217,9 @@ def generate_thumbnail(video_id: int, title: str, style: str) -> Path:
     image = Image.new("RGB", (1280, 720), bg)
     draw = ImageDraw.Draw(image)
     draw.rectangle((0, 560, 1280, 720), fill=accent)
-    font = ImageFont.load_default(size=72)
-    small_font = ImageFont.load_default(size=34)
-    wrapped = _wrap_text(title, 24)
+    font = _load_font(72)
+    small_font = _load_font(34)
+    wrapped = _wrap_text(title, 18)
     draw.multiline_text((80, 160), wrapped, fill=fg, font=font, spacing=18)
     draw.text((86, 594), "AUTO PLAYLIST", fill=bg, font=small_font)
     path = settings.thumbnail_dir / f"thumbnail-{video_id}-{uuid.uuid4().hex}.jpg"
@@ -212,16 +228,16 @@ def generate_thumbnail(video_id: int, title: str, style: str) -> Path:
 
 
 def _wrap_text(text: str, width: int) -> str:
-    words = text.split()
     lines: list[str] = []
     current = ""
-    for word in words:
-        candidate = f"{current} {word}".strip()
-        if len(candidate) > width and current:
-            lines.append(current)
-            current = word
+    for ch in text:
+        if ch == " " and not current.endswith(" "):
+            current += ch
         else:
-            current = candidate
-    if current:
-        lines.append(current)
+            current += ch
+        if len(current.rstrip()) >= width:
+            lines.append(current.rstrip())
+            current = ""
+    if current.strip():
+        lines.append(current.strip())
     return "\n".join(lines[:4]) or "Untitled Playlist"

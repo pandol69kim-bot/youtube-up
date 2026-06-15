@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     youtube_refresh_token: str = ""
     jwt_secret: str = "change-me-before-production"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=str(PROJECT_ROOT / ".env"), env_file_encoding="utf-8", extra="ignore")
 
     @property
     def cors_origins(self) -> list[str]:

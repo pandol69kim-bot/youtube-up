@@ -62,8 +62,12 @@ export default function Home() {
     setTracks(await api.tracks(playlistId));
     try {
       const existing = await api.latestVideo(playlistId);
-      setVideo(existing);
-      setDescription(`${defaultDescription}${existing.chapters}`);
+      if (existing) {
+        setVideo(existing);
+        setDescription(`${defaultDescription}${existing.chapters}`);
+      } else {
+        setVideo(null);
+      }
     } catch {
       setVideo(null);
     }

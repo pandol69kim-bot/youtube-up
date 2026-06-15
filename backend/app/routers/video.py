@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlmodel import Session, col, select
@@ -60,18 +61,15 @@ def get_video(video_id: int, session: Session = Depends(get_session)) -> Video:
     return video
 
 
-@router.get("/latest/{playlist_id}", response_model=VideoResponse)
-def get_latest_video(playlist_id: int, session: Session = Depends(get_session)) -> Video:
-    """플레이리스트의 가장 최근 완료된 영상을 반환한다."""
-    video = session.exec(
+@router.get("/latest/{playlist_id}", response_model=Optional[VideoResponse])
+def get_latest_video(playlist_id: int, session: Session = Depends(get_session)) -> Video | None:
+    """플레이리스트의 가장 최근 완료된 영상을 반환한다. 없으면 null."""
+    return session.exec(
         select(Video)
         .where(Video.playlist_id == playlist_id)
         .where(col(Video.status).in_(DONE_STATUSES))
         .order_by(col(Video.created_at).desc())
     ).first()
-    if not video:
-        raise HTTPException(status_code=404, detail="렌더링된 영상이 없습니다.")
-    return video
 
 
 @router.get("")
