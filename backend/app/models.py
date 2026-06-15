@@ -44,6 +44,7 @@ class Track(SQLModel, table=True):
     duration: float = 0
     file_path: str
     sort_order: int = 0
+    lyrics: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

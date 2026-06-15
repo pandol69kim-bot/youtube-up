@@ -7,9 +7,11 @@ import {
   FileAudio,
   Image as ImageIcon,
   Loader2,
+  Music2,
   Plus,
   RefreshCw,
   Upload,
+  X,
   Youtube,
 } from "lucide-react";
 import { ChangeEvent, DragEvent, ReactNode, useEffect, useMemo, useState } from "react";
@@ -29,6 +31,10 @@ export default function Home() {
   const [privacy, setPrivacy] = useState("private");
   const [publishAt, setPublishAt] = useState("");
   const [bgColor, setBgColor] = useState("#101827");
+  const [lyricsOpen, setLyricsOpen] = useState<Set<number>>(new Set());
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState("");
+  const [coverPath, setCoverPath] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -111,11 +117,39 @@ export default function Home() {
     }
   }
 
+  function toggleLyrics(trackId: number) {
+    setLyricsOpen((prev) => {
+      const next = new Set(prev);
+      next.has(trackId) ? next.delete(trackId) : next.add(trackId);
+      return next;
+    });
+  }
+
+  function onCoverChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+    setCoverPath("");
+  }
+
+  function removeCover() {
+    setCoverFile(null);
+    setCoverPreview("");
+    setCoverPath("");
+  }
+
   async function renderVideo() {
     if (!selectedPlaylist) return;
     setBusy("render");
     try {
-      const rendered = await api.renderVideo(selectedPlaylist.id, bgColor);
+      let resolvedCoverPath = coverPath;
+      if (coverFile && !coverPath) {
+        const { path } = await api.coverUpload(coverFile);
+        resolvedCoverPath = path;
+        setCoverPath(path);
+      }
+      const rendered = await api.renderVideo(selectedPlaylist.id, bgColor, resolvedCoverPath || undefined);
       setVideo(rendered);
       setDescription(`${defaultDescription}${rendered.chapters}`);
       setMessage(rendered.status === "ready" ? "영상 렌더링이 완료되었습니다." : rendered.error_message);
@@ -238,6 +272,28 @@ export default function Home() {
           </div>
 
           <div className="rounded-md border border-line bg-[#fbfaf5] p-5 shadow-soft">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">커버 이미지</h2>
+              <ImageIcon className="text-neutral-400" size={20} />
+            </div>
+            {coverPreview ? (
+              <div className="relative">
+                <img src={coverPreview} alt="cover preview" className="aspect-video w-full rounded-md border border-line object-cover" />
+                <button onClick={removeCover} className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/80 shadow hover:bg-white" title="제거">
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <label className="focus-ring flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-line bg-white py-6 text-center text-sm text-neutral-500 hover:bg-[#f5f5f0]">
+                <ImageIcon className="mb-2 text-neutral-300" size={28} />
+                <span>JPG · PNG · WEBP</span>
+                <span className="mt-1 text-xs">없으면 배경색으로 렌더링</span>
+                <input className="sr-only" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={onCoverChange} />
+              </label>
+            )}
+          </div>
+
+          <div className="rounded-md border border-line bg-[#fbfaf5] p-5 shadow-soft">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">트랙 편집</h2>
               <div className="flex items-center gap-2">
@@ -252,16 +308,37 @@ export default function Home() {
               </div>
             </div>
             <div className="overflow-hidden rounded-md border border-line">
-              <div className="grid grid-cols-[56px_1.2fr_1fr_1fr_92px] bg-[#ecebe3] px-3 py-2 text-xs font-semibold uppercase text-neutral-500">
-                <span>순서</span><span>제목</span><span>아티스트</span><span>앨범</span><span>길이</span>
+              <div className="grid grid-cols-[56px_1.2fr_1fr_1fr_72px_36px] bg-[#ecebe3] px-3 py-2 text-xs font-semibold uppercase text-neutral-500">
+                <span>순서</span><span>제목</span><span>아티스트</span><span>앨범</span><span>길이</span><span></span>
               </div>
               {tracks.map((track, index) => (
-                <div key={track.id} className="grid grid-cols-[56px_1.2fr_1fr_1fr_92px] items-center gap-2 border-t border-line bg-white px-3 py-2 text-sm">
-                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.sort_order} onChange={(event) => handleTrackChange(track, "sort_order", event.target.value)} onBlur={(event) => saveTrack(track, "sort_order", event.target.value)} aria-label={`track ${index + 1} order`} />
-                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.title} onChange={(event) => handleTrackChange(track, "title", event.target.value)} onBlur={(event) => saveTrack(track, "title", event.target.value)} aria-label={`track ${index + 1} title`} />
-                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.artist} onChange={(event) => handleTrackChange(track, "artist", event.target.value)} onBlur={(event) => saveTrack(track, "artist", event.target.value)} aria-label={`track ${index + 1} artist`} />
-                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.album} onChange={(event) => handleTrackChange(track, "album", event.target.value)} onBlur={(event) => saveTrack(track, "album", event.target.value)} aria-label={`track ${index + 1} album`} />
-                  <span className="text-right text-neutral-600">{formatDuration(track.duration)}</span>
+                <div key={track.id} className="border-t border-line bg-white">
+                  <div className="grid grid-cols-[56px_1.2fr_1fr_1fr_72px_36px] items-center gap-2 px-3 py-2 text-sm">
+                    <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.sort_order} onChange={(event) => handleTrackChange(track, "sort_order", event.target.value)} onBlur={(event) => saveTrack(track, "sort_order", event.target.value)} aria-label={`track ${index + 1} order`} />
+                    <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.title} onChange={(event) => handleTrackChange(track, "title", event.target.value)} onBlur={(event) => saveTrack(track, "title", event.target.value)} aria-label={`track ${index + 1} title`} />
+                    <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.artist} onChange={(event) => handleTrackChange(track, "artist", event.target.value)} onBlur={(event) => saveTrack(track, "artist", event.target.value)} aria-label={`track ${index + 1} artist`} />
+                    <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.album} onChange={(event) => handleTrackChange(track, "album", event.target.value)} onBlur={(event) => saveTrack(track, "album", event.target.value)} aria-label={`track ${index + 1} album`} />
+                    <span className="text-right text-neutral-600">{formatDuration(track.duration)}</span>
+                    <button
+                      onClick={() => toggleLyrics(track.id)}
+                      title="가사 편집"
+                      className={`focus-ring flex h-7 w-7 items-center justify-center rounded border ${lyricsOpen.has(track.id) ? "border-pine bg-[#e6efe8] text-pine" : "border-line text-neutral-400 hover:text-pine"}`}
+                    >
+                      <Music2 size={13} />
+                    </button>
+                  </div>
+                  {lyricsOpen.has(track.id) && (
+                    <div className="border-t border-dashed border-line px-3 pb-3 pt-2">
+                      <p className="mb-1 text-xs font-medium text-neutral-500">가사 — 한 줄씩 입력, 재생 길이에 맞게 자동 분배</p>
+                      <textarea
+                        className="focus-ring h-32 w-full resize-y rounded border border-line px-3 py-2 text-sm"
+                        placeholder={"첫 번째 줄 가사\n두 번째 줄 가사\n..."}
+                        value={track.lyrics ?? ""}
+                        onChange={(event) => handleTrackChange(track, "lyrics", event.target.value)}
+                        onBlur={(event) => saveTrack(track, "lyrics", event.target.value)}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
               {tracks.length === 0 && <div className="bg-white px-4 py-8 text-center text-sm text-neutral-500">업로드된 트랙이 없습니다.</div>}

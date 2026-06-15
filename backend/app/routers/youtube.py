@@ -13,10 +13,12 @@ router = APIRouter(prefix="/youtube", tags=["youtube"])
 
 @router.post("/connect")
 def connect() -> dict[str, str]:
-    return {
-        "mode": "mock",
-        "message": "개발 모드입니다. 실 OAuth는 YOUTUBE_* 환경변수를 채운 뒤 어댑터를 연결하세요.",
-    }
+    from app.config import get_settings
+    settings = get_settings()
+    mode = settings.youtube_upload_mode
+    if mode == "real":
+        return {"mode": "real", "message": "실제 YouTube 업로드 모드입니다."}
+    return {"mode": "mock", "message": "Mock 모드입니다. .env의 YOUTUBE_UPLOAD_MODE=real 로 변경하면 실 업로드가 활성화됩니다."}
 
 
 @router.post("/upload")
@@ -27,7 +29,7 @@ def upload(payload: YouTubeUploadRequest, session: Session = Depends(get_session
     if video.status not in {VideoStatus.ready, VideoStatus.uploaded, VideoStatus.scheduled}:
         raise HTTPException(status_code=400, detail="업로드 가능한 영상 상태가 아닙니다.")
     try:
-        youtube_id, _mode = upload_video(payload)
+        youtube_id, _mode = upload_video(payload, video.output_path)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     video.youtube_video_id = youtube_id

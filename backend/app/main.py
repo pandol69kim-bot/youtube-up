@@ -47,6 +47,7 @@ app.add_middleware(
 app.mount("/files/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 app.mount("/files/renders", StaticFiles(directory=settings.render_dir), name="renders")
 app.mount("/files/thumbnails", StaticFiles(directory=settings.thumbnail_dir), name="thumbnails")
+app.mount("/files/covers", StaticFiles(directory=settings.covers_dir), name="covers")
 
 app.include_router(auth.router)
 app.include_router(playlists.router)

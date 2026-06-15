@@ -14,6 +14,7 @@ export type Track = {
   album: string;
   duration: number;
   sort_order: number;
+  lyrics: string;
 };
 
 export type Video = {
@@ -57,10 +58,19 @@ export const api = {
     request<Track>(`/tracks/${trackId}`, { method: "PUT", body: JSON.stringify(payload) }),
   latestVideo: (playlistId: number) =>
     request<Video>(`/video/latest/${playlistId}`),
-  renderVideo: (playlistId: number, backgroundColor: string) =>
+  coverUpload: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<{ path: string }>("/video/cover-upload", { method: "POST", body: form });
+  },
+  renderVideo: (playlistId: number, backgroundColor: string, coverImagePath?: string) =>
     request<Video>("/video/render", {
       method: "POST",
-      body: JSON.stringify({ playlist_id: playlistId, background_color: backgroundColor }),
+      body: JSON.stringify({
+        playlist_id: playlistId,
+        background_color: backgroundColor,
+        cover_image_path: coverImagePath ?? null,
+      }),
     }),
   generateThumbnail: (videoId: number, title: string, style: string) =>
     request<{ id: number; image_path: string }>("/thumbnail/generate", {

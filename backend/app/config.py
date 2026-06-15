@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     upload_dir: Path = PROJECT_ROOT / "uploads"
     render_dir: Path = PROJECT_ROOT / "renders"
     thumbnail_dir: Path = PROJECT_ROOT / "thumbnails"
+    covers_dir: Path = PROJECT_ROOT / "covers"
     youtube_upload_mode: str = "mock"
     youtube_client_id: str = ""
     youtube_client_secret: str = ""
@@ -34,6 +35,7 @@ def get_settings() -> Settings:
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
     settings.render_dir.mkdir(parents=True, exist_ok=True)
     settings.thumbnail_dir.mkdir(parents=True, exist_ok=True)
+    settings.covers_dir.mkdir(parents=True, exist_ok=True)
     LOCAL_RUNTIME_ROOT.mkdir(parents=True, exist_ok=True)
     (PROJECT_ROOT / "data").mkdir(parents=True, exist_ok=True)
     return settings

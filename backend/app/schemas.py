@@ -37,11 +37,13 @@ class TrackUpdate(BaseModel):
     artist: Optional[str] = None
     album: Optional[str] = None
     sort_order: Optional[int] = None
+    lyrics: Optional[str] = None
 
 
 class RenderRequest(BaseModel):
     playlist_id: int
     background_color: str = "#101827"
+    cover_image_path: Optional[str] = None
 
 
 class ThumbnailRequest(BaseModel):
