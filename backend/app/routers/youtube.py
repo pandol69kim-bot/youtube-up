@@ -1,14 +1,41 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.db import get_session
-from app.models import Video, VideoStatus
+from app.models import Track, Video, VideoStatus
 from app.schemas import YouTubeUploadRequest
 from app.services.youtube import upload_video
 
 router = APIRouter(prefix="/youtube", tags=["youtube"])
+
+
+def _build_description(base: str, video: Video, session: Session) -> str:
+    tracks = session.exec(
+        select(Track)
+        .where(Track.playlist_id == video.playlist_id)
+        .order_by(Track.sort_order, Track.id)
+    ).all()
+
+    parts: list[str] = []
+    if base.strip():
+        parts.append(base.strip())
+
+    if video.chapters:
+        parts.append("【수록곡】\n" + video.chapters)
+
+    lyrics_blocks: list[str] = []
+    for track in tracks:
+        if track.lyrics and track.lyrics.strip():
+            artist = f" - {track.artist}" if track.artist else ""
+            header = f"▶ {track.title}{artist}"
+            lyrics_blocks.append(header + "\n" + track.lyrics.strip())
+
+    if lyrics_blocks:
+        parts.append("【가사】\n" + "\n\n".join(lyrics_blocks))
+
+    return "\n\n".join(parts)
 
 
 @router.post("/connect")
@@ -28,6 +55,7 @@ def upload(payload: YouTubeUploadRequest, session: Session = Depends(get_session
         raise HTTPException(status_code=404, detail="영상을 찾을 수 없습니다.")
     if video.status not in {VideoStatus.ready, VideoStatus.uploaded, VideoStatus.scheduled}:
         raise HTTPException(status_code=400, detail="업로드 가능한 영상 상태가 아닙니다.")
+    payload.description = _build_description(payload.description, video, session)
     try:
         youtube_id, _mode = upload_video(payload, video.output_path)
     except Exception as exc:

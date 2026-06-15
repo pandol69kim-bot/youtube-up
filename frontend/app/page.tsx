@@ -5,11 +5,13 @@ import {
   CheckCircle2,
   Clapperboard,
   FileAudio,
+  FileDown,
   Image as ImageIcon,
   Loader2,
   Music2,
   Plus,
   RefreshCw,
+  Trash2,
   Upload,
   X,
   Youtube,
@@ -31,6 +33,7 @@ export default function Home() {
   const [privacy, setPrivacy] = useState("private");
   const [publishAt, setPublishAt] = useState("");
   const [bgColor, setBgColor] = useState("#101827");
+  const [playlistTitleEdit, setPlaylistTitleEdit] = useState("");
   const [lyricsOpen, setLyricsOpen] = useState<Set<number>>(new Set());
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState("");
@@ -45,6 +48,10 @@ export default function Home() {
   useEffect(() => {
     refreshPlaylists();
   }, []);
+
+  useEffect(() => {
+    setPlaylistTitleEdit(selectedPlaylist?.title ?? "");
+  }, [selectedPlaylist?.id]);
 
   async function refreshPlaylists() {
     const list = await api.playlists();
@@ -118,6 +125,28 @@ export default function Home() {
       setTracks((items) => items.map((item) => (item.id === updated.id ? updated : item)));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "트랙 수정 실패");
+    }
+  }
+
+  async function savePlaylistTitle() {
+    if (!selectedPlaylist || !playlistTitleEdit.trim() || playlistTitleEdit === selectedPlaylist.title) return;
+    try {
+      const updated = await api.updatePlaylist(selectedPlaylist.id, { title: playlistTitleEdit.trim() });
+      setSelectedPlaylist(updated);
+      setPlaylists((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "제목 수정 실패");
+      setPlaylistTitleEdit(selectedPlaylist.title);
+    }
+  }
+
+  async function deleteTrack(trackId: number) {
+    try {
+      await api.deleteTrack(trackId);
+      setTracks((prev) => prev.filter((t) => t.id !== trackId));
+      setLyricsOpen((prev) => { const next = new Set(prev); next.delete(trackId); return next; });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "트랙 삭제 실패");
     }
   }
 
@@ -226,9 +255,19 @@ export default function Home() {
         <aside className="rounded-md border border-line bg-[#fbfaf5] p-4 shadow-soft">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase text-neutral-500">Playlists</h2>
-            <button onClick={createPlaylist} className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md bg-pine text-white" title="플레이리스트 생성">
-              {busy === "playlist" ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <a
+                href={`${API_BASE}/playlists/export-all.md`}
+                download="playlists-all.md"
+                title="전체 MD 다운로드"
+                className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-neutral-500 hover:text-pine"
+              >
+                <FileDown size={16} />
+              </a>
+              <button onClick={createPlaylist} className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md bg-pine text-white" title="플레이리스트 생성">
+                {busy === "playlist" ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             {playlists.map((playlist) => (
@@ -298,13 +337,36 @@ export default function Home() {
           </div>
 
           <div className="rounded-md border border-line bg-[#fbfaf5] p-5 shadow-soft">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">트랙 편집</h2>
-              <div className="flex items-center gap-2">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <h2 className="mb-1 text-lg font-semibold">트랙 편집</h2>
+                {selectedPlaylist && (
+                  <input
+                    className="focus-ring w-full rounded border border-line bg-white px-2 py-1 text-sm font-medium"
+                    value={playlistTitleEdit}
+                    onChange={(e) => setPlaylistTitleEdit(e.target.value)}
+                    onBlur={savePlaylistTitle}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    placeholder="플레이리스트 제목"
+                    aria-label="플레이리스트 제목 편집"
+                  />
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2 pt-1">
                 <label className="flex items-center gap-1.5 text-xs text-neutral-500" title="배경색">
                   <span>배경</span>
                   <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="h-7 w-10 cursor-pointer rounded border border-line bg-white p-0.5" />
                 </label>
+                {selectedPlaylist && (
+                  <a
+                    href={`${API_BASE}/playlists/${selectedPlaylist.id}/export.md`}
+                    download
+                    title="MD 다운로드"
+                    className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-neutral-500 hover:text-pine"
+                  >
+                    <FileDown size={16} />
+                  </a>
+                )}
                 <button onClick={renderVideo} disabled={!selectedPlaylist || tracks.length === 0 || busy === "render"} className="focus-ring inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-medium text-white disabled:opacity-45">
                   {busy === "render" ? <Loader2 className="animate-spin" size={16} /> : <Clapperboard size={16} />}
                   렌더링
@@ -312,13 +374,13 @@ export default function Home() {
               </div>
             </div>
             <div className="overflow-hidden rounded-md border border-line">
-              <div className="grid grid-cols-[56px_1.2fr_1fr_1fr_72px_36px] bg-[#ecebe3] px-3 py-2 text-xs font-semibold uppercase text-neutral-500">
-                <span>순서</span><span>제목</span><span>아티스트</span><span>앨범</span><span>길이</span><span></span>
+              <div className="grid grid-cols-[40px_1.2fr_1fr_1fr_72px_36px_36px] bg-[#ecebe3] px-3 py-2 text-xs font-semibold uppercase text-neutral-500">
+                <span>#</span><span>제목</span><span>아티스트</span><span>앨범</span><span>길이</span><span></span><span></span>
               </div>
               {tracks.map((track, index) => (
                 <div key={track.id} className="border-t border-line bg-white">
-                  <div className="grid grid-cols-[56px_1.2fr_1fr_1fr_72px_36px] items-center gap-2 px-3 py-2 text-sm">
-                    <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.sort_order} onChange={(event) => handleTrackChange(track, "sort_order", event.target.value)} onBlur={(event) => saveTrack(track, "sort_order", event.target.value)} aria-label={`track ${index + 1} order`} />
+                  <div className="grid grid-cols-[40px_1.2fr_1fr_1fr_72px_36px_36px] items-center gap-2 px-3 py-2 text-sm">
+                    <span className="text-center text-sm font-medium text-neutral-400">{index + 1}</span>
                     <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.title} onChange={(event) => handleTrackChange(track, "title", event.target.value)} onBlur={(event) => saveTrack(track, "title", event.target.value)} aria-label={`track ${index + 1} title`} />
                     <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.artist} onChange={(event) => handleTrackChange(track, "artist", event.target.value)} onBlur={(event) => saveTrack(track, "artist", event.target.value)} aria-label={`track ${index + 1} artist`} />
                     <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.album} onChange={(event) => handleTrackChange(track, "album", event.target.value)} onBlur={(event) => saveTrack(track, "album", event.target.value)} aria-label={`track ${index + 1} album`} />
@@ -329,6 +391,13 @@ export default function Home() {
                       className={`focus-ring flex h-7 w-7 items-center justify-center rounded border ${lyricsOpen.has(track.id) ? "border-pine bg-[#e6efe8] text-pine" : "border-line text-neutral-400 hover:text-pine"}`}
                     >
                       <Music2 size={13} />
+                    </button>
+                    <button
+                      onClick={() => deleteTrack(track.id)}
+                      title="트랙 삭제"
+                      className="focus-ring flex h-7 w-7 items-center justify-center rounded border border-line text-neutral-400 hover:border-red-300 hover:text-red-500"
+                    >
+                      <Trash2 size={13} />
                     </button>
                   </div>
                   {lyricsOpen.has(track.id) && (

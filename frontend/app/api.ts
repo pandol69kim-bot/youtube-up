@@ -56,6 +56,10 @@ export const api = {
   },
   updateTrack: (trackId: number, payload: Partial<Track>) =>
     request<Track>(`/tracks/${trackId}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteTrack: (trackId: number) =>
+    request<{ ok: boolean }>(`/tracks/${trackId}`, { method: "DELETE" }),
+  updatePlaylist: (playlistId: number, payload: { title?: string; description?: string }) =>
+    request<Playlist>(`/playlists/${playlistId}`, { method: "PUT", body: JSON.stringify(payload) }),
   latestVideo: (playlistId: number) =>
     request<Video | null>(`/video/latest/${playlistId}`),
   coverUpload: (file: File) => {
