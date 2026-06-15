@@ -238,21 +238,21 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen">
-      <header className="border-b border-line bg-[#fbfaf5]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+    <main className="min-h-screen overflow-x-auto">
+      <header className="border-b border-[#c8c8be] bg-white shadow-sm">
+        <div className="mx-auto flex min-w-[1000px] max-w-7xl items-center justify-between px-6 py-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-normal">MP3 Playlist Automation</h1>
-            <p className="mt-1 text-sm text-neutral-600">업로드, 렌더링, 썸네일, YouTube 예약 발행까지 한 번에 관리합니다.</p>
+            <p className="mt-1 text-sm text-neutral-500">업로드, 렌더링, 썸네일, YouTube 예약 발행까지 한 번에 관리합니다.</p>
           </div>
-          <button onClick={refreshPlaylists} className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md border border-line bg-white" title="새로고침">
+          <button onClick={refreshPlaylists} className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md border border-line bg-white hover:bg-neutral-50" title="새로고침">
             <RefreshCw size={18} />
           </button>
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-5 px-6 py-6 lg:grid-cols-[260px_1fr_360px]">
-        <aside className="rounded-md border border-line bg-[#fbfaf5] p-4 shadow-soft">
+      <div className="mx-auto grid min-w-[1000px] max-w-7xl grid-cols-[260px_1fr_360px] gap-5 px-6 py-6">
+        <aside className="rounded-lg border border-[#c8c8be] bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase text-neutral-500">Playlists</h2>
             <div className="flex items-center gap-1.5">
@@ -290,7 +290,7 @@ export default function Home() {
         </aside>
 
         <section className="space-y-5">
-          <div className="rounded-md border border-line bg-[#fbfaf5] p-5 shadow-soft">
+          <div className="rounded-lg border border-[#c8c8be] bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">음원 업로드</h2>
@@ -314,7 +314,7 @@ export default function Home() {
             </label>
           </div>
 
-          <div className="rounded-md border border-line bg-[#fbfaf5] p-5 shadow-soft">
+          <div className="rounded-lg border border-[#c8c8be] bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold">커버 이미지</h2>
               <ImageIcon className="text-neutral-400" size={20} />
@@ -336,7 +336,7 @@ export default function Home() {
             )}
           </div>
 
-          <div className="rounded-md border border-line bg-[#fbfaf5] p-5 shadow-soft">
+          <div className="rounded-lg border border-[#c8c8be] bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div className="flex-1">
                 <h2 className="mb-1 text-lg font-semibold">트랙 편집</h2>
@@ -420,7 +420,7 @@ export default function Home() {
         </section>
 
         <aside className="space-y-5">
-          <div className="rounded-md border border-line bg-[#fbfaf5] p-5 shadow-soft">
+          <div className="rounded-lg border border-[#c8c8be] bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold">메타데이터</h2>
             <Field label="영상 제목">
               <input className="focus-ring w-full rounded-md border border-line px-3 py-2" value={title} onChange={(event) => setTitle(event.target.value)} />
@@ -445,7 +445,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="rounded-md border border-line bg-[#fbfaf5] p-5 shadow-soft">
+          <div className="rounded-lg border border-[#c8c8be] bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold">출력</h2>
             <StatusRow icon={<Clapperboard size={18} />} label="영상" value={video ? video.status : "대기"} />
             <StatusRow icon={<ImageIcon size={18} />} label="썸네일" value={thumbnailPath ? "ready" : "대기"} />
