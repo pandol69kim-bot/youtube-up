@@ -1,14 +1,16 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.db import get_session
-from app.models import Thumbnail, Video, VideoStatus
-from app.schemas import RenderRequest, ThumbnailRequest, VideoResponse
-from app.services.media import generate_thumbnail, render_playlist_video
+from app.models import Video, VideoStatus
+from app.schemas import RenderRequest, VideoResponse
+from app.services.media import render_playlist_video
 
 router = APIRouter(prefix="/video", tags=["video"])
+
+DONE_STATUSES = (VideoStatus.ready, VideoStatus.uploaded, VideoStatus.scheduled)
 
 
 @router.post("/render", response_model=VideoResponse)
@@ -41,19 +43,21 @@ def get_video(video_id: int, session: Session = Depends(get_session)) -> Video:
     return video
 
 
+@router.get("/latest/{playlist_id}", response_model=VideoResponse)
+def get_latest_video(playlist_id: int, session: Session = Depends(get_session)) -> Video:
+    """플레이리스트의 가장 최근 완료된 영상을 반환한다."""
+    video = session.exec(
+        select(Video)
+        .where(Video.playlist_id == playlist_id)
+        .where(col(Video.status).in_(DONE_STATUSES))
+        .order_by(col(Video.created_at).desc())
+    ).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="렌더링된 영상이 없습니다.")
+    return video
+
+
 @router.get("")
 def list_videos(session: Session = Depends(get_session)) -> list[Video]:
-    return list(session.exec(select(Video).order_by(Video.created_at.desc())).all())
+    return list(session.exec(select(Video).order_by(col(Video.created_at).desc())).all())
 
-
-@router.post("/thumbnail")
-def create_thumbnail(payload: ThumbnailRequest, session: Session = Depends(get_session)) -> Thumbnail:
-    video = session.get(Video, payload.video_id)
-    if not video:
-        raise HTTPException(status_code=404, detail="영상을 찾을 수 없습니다.")
-    path = generate_thumbnail(payload.video_id, payload.title, payload.style)
-    thumbnail = Thumbnail(video_id=payload.video_id, image_path=str(path))
-    session.add(thumbnail)
-    session.commit()
-    session.refresh(thumbnail)
-    return thumbnail

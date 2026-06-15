@@ -19,11 +19,21 @@ def safe_filename(filename: str) -> str:
     return f"{uuid.uuid4().hex}{suffix}"
 
 
-def audio_duration(path: Path) -> float:
-    audio = MutagenFile(path)
-    if audio and audio.info:
-        return float(getattr(audio.info, "length", 0) or 0)
-    return 0
+def audio_metadata(path: Path, fallback_title: str) -> tuple[float, str, str, str]:
+    """Returns (duration, title, artist, album) extracted from audio tags."""
+    audio = MutagenFile(path, easy=True)
+    duration = 0.0
+    title = fallback_title
+    artist = ""
+    album = ""
+    if audio is not None:
+        if audio.info:
+            duration = float(getattr(audio.info, "length", 0) or 0)
+        if audio.tags:
+            title = str(audio.tags.get("title", [fallback_title])[0])
+            artist = str(audio.tags.get("artist", [""])[0])
+            album = str(audio.tags.get("album", [""])[0])
+    return duration, title, artist, album
 
 
 def chapters_for_tracks(tracks: list[Track]) -> str:

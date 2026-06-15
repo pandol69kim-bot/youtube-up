@@ -7,7 +7,7 @@ from app.config import get_settings
 from app.db import get_session
 from app.models import Playlist, Track
 from app.schemas import TrackUpdate
-from app.services.media import SUPPORTED_AUDIO, audio_duration, safe_filename
+from app.services.media import SUPPORTED_AUDIO, audio_metadata, safe_filename
 
 router = APIRouter(prefix="/tracks", tags=["tracks"])
 
@@ -41,11 +41,14 @@ async def upload_tracks(
         with target.open("wb") as handle:
             while chunk := await upload.read(1024 * 1024):
                 handle.write(chunk)
-        title = Path(upload.filename or target.name).stem
+        fallback_title = Path(upload.filename or target.name).stem
+        duration, title, artist, album = audio_metadata(target, fallback_title)
         track = Track(
             playlist_id=playlist_id,
             title=title,
-            duration=audio_duration(target),
+            artist=artist,
+            album=album,
+            duration=duration,
             file_path=str(target),
             sort_order=existing_count + index,
         )

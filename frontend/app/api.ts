@@ -55,6 +55,8 @@ export const api = {
   },
   updateTrack: (trackId: number, payload: Partial<Track>) =>
     request<Track>(`/tracks/${trackId}`, { method: "PUT", body: JSON.stringify(payload) }),
+  latestVideo: (playlistId: number) =>
+    request<Video>(`/video/latest/${playlistId}`),
   renderVideo: (playlistId: number, backgroundColor: string) =>
     request<Video>("/video/render", {
       method: "POST",

@@ -28,6 +28,7 @@ export default function Home() {
   const [tags, setTags] = useState("music, playlist, focus, study");
   const [privacy, setPrivacy] = useState("private");
   const [publishAt, setPublishAt] = useState("");
+  const [bgColor, setBgColor] = useState("#101827");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -45,12 +46,21 @@ export default function Home() {
     if (!selectedPlaylist && list[0]) {
       setSelectedPlaylist(list[0]);
       await refreshTracks(list[0].id);
+    } else if (selectedPlaylist) {
+      await refreshTracks(selectedPlaylist.id);
     }
   }
 
   async function refreshTracks(playlistId = selectedPlaylist?.id) {
     if (!playlistId) return;
     setTracks(await api.tracks(playlistId));
+    try {
+      const existing = await api.latestVideo(playlistId);
+      setVideo(existing);
+      setDescription(`${defaultDescription}${existing.chapters}`);
+    } catch {
+      setVideo(null);
+    }
   }
 
   async function createPlaylist() {
@@ -83,17 +93,29 @@ export default function Home() {
     }
   }
 
-  async function updateTrack(track: Track, key: keyof Track, value: string) {
-    const patch = { [key]: key === "sort_order" ? Number(value) : value };
-    const updated = await api.updateTrack(track.id, patch);
-    setTracks((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+  function handleTrackChange(track: Track, key: keyof Track, value: string) {
+    setTracks((items) =>
+      items.map((item) =>
+        item.id === track.id ? { ...item, [key]: key === "sort_order" ? Number(value) : value } : item
+      )
+    );
+  }
+
+  async function saveTrack(track: Track, key: keyof Track, value: string) {
+    try {
+      const patch = { [key]: key === "sort_order" ? Number(value) : value };
+      const updated = await api.updateTrack(track.id, patch);
+      setTracks((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "트랙 수정 실패");
+    }
   }
 
   async function renderVideo() {
     if (!selectedPlaylist) return;
     setBusy("render");
     try {
-      const rendered = await api.renderVideo(selectedPlaylist.id, "#12372a");
+      const rendered = await api.renderVideo(selectedPlaylist.id, bgColor);
       setVideo(rendered);
       setDescription(`${defaultDescription}${rendered.chapters}`);
       setMessage(rendered.status === "ready" ? "영상 렌더링이 완료되었습니다." : rendered.error_message);
@@ -216,12 +238,18 @@ export default function Home() {
           </div>
 
           <div className="rounded-md border border-line bg-[#fbfaf5] p-5 shadow-soft">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">트랙 편집</h2>
-              <button onClick={renderVideo} disabled={!selectedPlaylist || tracks.length === 0 || busy === "render"} className="focus-ring inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-medium text-white disabled:opacity-45">
-                {busy === "render" ? <Loader2 className="animate-spin" size={16} /> : <Clapperboard size={16} />}
-                렌더링
-              </button>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 text-xs text-neutral-500" title="배경색">
+                  <span>배경</span>
+                  <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="h-7 w-10 cursor-pointer rounded border border-line bg-white p-0.5" />
+                </label>
+                <button onClick={renderVideo} disabled={!selectedPlaylist || tracks.length === 0 || busy === "render"} className="focus-ring inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-medium text-white disabled:opacity-45">
+                  {busy === "render" ? <Loader2 className="animate-spin" size={16} /> : <Clapperboard size={16} />}
+                  렌더링
+                </button>
+              </div>
             </div>
             <div className="overflow-hidden rounded-md border border-line">
               <div className="grid grid-cols-[56px_1.2fr_1fr_1fr_92px] bg-[#ecebe3] px-3 py-2 text-xs font-semibold uppercase text-neutral-500">
@@ -229,10 +257,10 @@ export default function Home() {
               </div>
               {tracks.map((track, index) => (
                 <div key={track.id} className="grid grid-cols-[56px_1.2fr_1fr_1fr_92px] items-center gap-2 border-t border-line bg-white px-3 py-2 text-sm">
-                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.sort_order} onChange={(event) => updateTrack(track, "sort_order", event.target.value)} aria-label={`track ${index + 1} order`} />
-                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.title} onChange={(event) => updateTrack(track, "title", event.target.value)} aria-label={`track ${index + 1} title`} />
-                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.artist} onChange={(event) => updateTrack(track, "artist", event.target.value)} aria-label={`track ${index + 1} artist`} />
-                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.album} onChange={(event) => updateTrack(track, "album", event.target.value)} aria-label={`track ${index + 1} album`} />
+                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.sort_order} onChange={(event) => handleTrackChange(track, "sort_order", event.target.value)} onBlur={(event) => saveTrack(track, "sort_order", event.target.value)} aria-label={`track ${index + 1} order`} />
+                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.title} onChange={(event) => handleTrackChange(track, "title", event.target.value)} onBlur={(event) => saveTrack(track, "title", event.target.value)} aria-label={`track ${index + 1} title`} />
+                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.artist} onChange={(event) => handleTrackChange(track, "artist", event.target.value)} onBlur={(event) => saveTrack(track, "artist", event.target.value)} aria-label={`track ${index + 1} artist`} />
+                  <input className="focus-ring w-full rounded border border-line px-2 py-1" value={track.album} onChange={(event) => handleTrackChange(track, "album", event.target.value)} onBlur={(event) => saveTrack(track, "album", event.target.value)} aria-label={`track ${index + 1} album`} />
                   <span className="text-right text-neutral-600">{formatDuration(track.duration)}</span>
                 </div>
               ))}
@@ -277,6 +305,7 @@ export default function Home() {
                 렌더 결과 열기
               </a>
             )}
+            <YoutubeLinks videoId={video?.youtube_video_id} />
             {thumbnailPath && (
               <img className="mt-3 aspect-video w-full rounded-md border border-line object-cover" src={`${API_BASE}/files/thumbnails/${fileName(thumbnailPath)}`} alt="Generated thumbnail" />
             )}
@@ -318,6 +347,40 @@ function StatusRow({ icon, label, value }: { icon: ReactNode; label: string; val
     <div className="mb-2 flex items-center justify-between rounded-md border border-line bg-white px-3 py-2 text-sm">
       <span className="flex items-center gap-2 text-neutral-600">{icon}{label}</span>
       <span className="max-w-40 truncate font-medium">{value}</span>
+    </div>
+  );
+}
+
+function YoutubeLinks({ videoId }: { videoId?: string }) {
+  if (!videoId) return null;
+  const isMock = videoId.startsWith("mock-");
+  if (isMock) {
+    return (
+      <div className="mt-2 rounded-md border border-line bg-white px-3 py-2 text-xs text-neutral-400">
+        Mock 모드 — 실제 YouTube 링크 없음 ({videoId})
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 space-y-1">
+      <a
+        href={`https://studio.youtube.com/video/${videoId}/edit`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm text-sky hover:bg-[#f0f9ff]"
+      >
+        <Youtube size={14} />
+        YouTube Studio에서 상태 확인
+      </a>
+      <a
+        href={`https://youtu.be/${videoId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm text-neutral-600 hover:bg-[#f5f5f5]"
+      >
+        <Youtube size={14} />
+        영상 미리보기 (youtu.be)
+      </a>
     </div>
   );
 }
